@@ -36,13 +36,20 @@ class Application(ctk.CTk):
         ctk.set_default_color_theme("blue")
         super().__init__()
         self.title(f"OpenCore Helper {__version__}")
-        self.geometry("1280x800")
-        self.minsize(1080, 700)
+        scale = self._get_window_scaling()
+        screen_width, screen_height = self.winfo_screenwidth(), self.winfo_screenheight()
+        width = min(1280, int((screen_width - 32) / scale))
+        height = min(800, int((screen_height - 100) / scale))
+        x = max(0, (screen_width - round(width * scale)) // 2)
+        self.geometry(f"{width}x{height}+{x}+24")
+        self.minsize(min(980, width), min(620, height))
         self.configure(fg_color=("#f2f5fa", "#0d1524"))
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
         self.pages = {}
         self.nav = {}
+        self.wrap_labels = []
+        self.wrap_width = max(480, width - 280)
         self.hardware = None
         self.findings = []
         self.efi_issues = []
@@ -92,6 +99,7 @@ class Application(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self.close)
         self.bind("<Control-o>", lambda _: self.editor.open())
         self.bind("<Control-s>", lambda _: self.editor.save())
+        self.bind("<Configure>", self.resize_notes, add="+")
         self.after(100, self.poll_messages)
 
     def _build_sidebar(self):
@@ -121,9 +129,10 @@ class Application(ctk.CTk):
         return frame
 
     def note(self, parent, key, row, **params):
-        label = ctk.CTkLabel(parent, text=self.t(key, **params), wraplength=810, anchor="w", justify="left",
+        label = ctk.CTkLabel(parent, text=self.t(key, **params), wraplength=self.wrap_width, anchor="w", justify="left",
                               text_color=("#52637b", "#b2c2da"))
         label.grid(row=row, column=0, sticky="ew", pady=(0, 14))
+        self.wrap_labels.append((label, 0))
         return label
 
     def button_row(self, parent, row, actions):
@@ -151,10 +160,12 @@ class Application(ctk.CTk):
         frame = self.page("home", scroll=True)
         hero = ctk.CTkFrame(frame, corner_radius=18, fg_color=("#dceafa", "#192e4a"))
         hero.grid(row=0, column=0, sticky="ew", pady=(0, 20))
-        ctk.CTkLabel(hero, text=self.t("hero_title"), font=ctk.CTkFont(size=30, weight="bold"),
-                     wraplength=760, justify="left", anchor="w").pack(fill="x", padx=28, pady=(28, 12))
-        ctk.CTkLabel(hero, text=self.t("hero_body"), wraplength=760, anchor="w", justify="left").pack(
-            fill="x", padx=28, pady=(0, 26))
+        for key, size, padding in (("hero_title", 30, (28, 12)), ("hero_body", 13, (0, 26))):
+            label = ctk.CTkLabel(hero, text=self.t(key), font=ctk.CTkFont(size=size,
+                                weight="bold" if key == "hero_title" else "normal"),
+                                wraplength=min(760, self.wrap_width - 56), justify="left", anchor="w")
+            label.pack(fill="x", padx=28, pady=padding)
+            self.wrap_labels.append((label, 56))
         self.button_row(frame, 1, [("open_config", self.open_config), ("scan_hardware", self.scan),
                                     ("open_downloads", lambda: self.show_page("downloads"))])
         cards = ctk.CTkFrame(frame, fg_color="transparent")
@@ -290,6 +301,17 @@ class Application(ctk.CTk):
 
     def set_status(self, text):
         self.status.configure(text=text)
+
+    def resize_notes(self, event):
+        # A toplevel binding also receives child events; handle only actual window changes.
+        if event.widget is not self:
+            return
+        logical_width = round(event.width / self._get_window_scaling())
+        if getattr(self, "_wrapped_for", None) == logical_width:
+            return
+        self._wrapped_for = logical_width
+        for label, padding in self.wrap_labels:
+            label.configure(wraplength=min(810, max(180, logical_width - 280 - padding)))
 
     def report_callback_exception(self, exc_type, exc_value, traceback):
         self.callback_errors.append(str(exc_value))

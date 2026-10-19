@@ -33,6 +33,8 @@ def main():
                 "Kernel": {"Add": []}, "PlatformInfo": {"Generic": {"SystemProductName": "Test"}}}))
             app.editor.open(fixture)
             app.update()
+            assert app.winfo_rootx() + app.winfo_width() <= app.winfo_screenwidth()
+            assert app.winfo_rooty() + app.winfo_height() <= app.winfo_screenheight()
             for page in app.pages:
                 app.show_page(page)
                 app.update()
@@ -43,7 +45,8 @@ def main():
                     # xdisplay avoids platform-specific screenshot helpers on Linux.
                     import os
                     options = {"xdisplay": os.environ["DISPLAY"]} if os.name != "nt" else {}
-                    image = ImageGrab.grab(**options)
+                    x, y = app.winfo_rootx(), app.winfo_rooty()
+                    image = ImageGrab.grab(bbox=(x, y, x + app.winfo_width(), y + app.winfo_height()), **options)
                     image.save(args.screenshots / f"{language}-{page}.png")
             app.show_page("editor")
             editor = app.editor
