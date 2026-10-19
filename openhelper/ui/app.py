@@ -547,7 +547,9 @@ class Application(ctk.CTk):
     def destroy(self):
         # Cancel Tcl timers before destroying their callbacks, including CTk animations.
         for timer in self.tk.call("after", "info"):
-            self.after_cancel(timer)
+            # Keep callback ownership with each widget; after_cancel would also delete
+            # child-owned Tcl commands and make their later destruction fail.
+            self.tk.call("after", "cancel", timer)
         self.executor.shutdown(wait=False, cancel_futures=True)
         super().destroy()
 
