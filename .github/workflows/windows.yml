@@ -1,0 +1,119 @@
+name: Windows build and release
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m ruff check main.py openhelper scripts tests --exclude openhelper/vendor
+      - run: python -m pytest -q
+      - run: python -m compileall -q openhelper main.py
+  windows:
+    needs: tests
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pytest -q
+      - name: Exercise CustomTkinter views in both languages
+        run: python scripts/gui_smoke.py --screenshots artifacts/screenshots
+      - name: Read hardware through Windows CIM
+        run: python -c "from openhelper.core.hardware import scan_hardware; data = scan_hardware(); assert data['cpu']; print('CIM scan passed')"
+      - name: Ensure NSIS is installed
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) {
+            choco install nsis --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'NSIS installation failed' }
+          }
+      - name: Build executable, portable package and installer
+        run: python scripts/build_windows.py
+      - name: Test frozen application from a different working directory
+        shell: pwsh
+        run: |
+          $binary = (Resolve-Path 'dist/OpenCoreHelper/OpenCoreHelper.exe').Path
+          $process = Start-Process -FilePath $binary -ArgumentList '--smoke-test' -WorkingDirectory $env:TEMP -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw 'Frozen application smoke test failed' }
+      - name: Install, open, update and uninstall on Windows
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem 'dist/*-Setup-x64.exe' | Select-Object -First 1).FullName
+          $install = Start-Process -FilePath $installer -ArgumentList '/S' -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw 'Installation failed' }
+          $installed = Join-Path $env:ProgramFiles 'SnoopyOS Company/OpenCore Helper/OpenCoreHelper.exe'
+          if (-not (Test-Path $installed)) { throw 'Installed executable missing' }
+          $open = Start-Process -FilePath $installed -ArgumentList '--smoke-test' -WorkingDirectory $env:TEMP -Wait -PassThru
+          if ($open.ExitCode -ne 0) { throw 'Installed application failed' }
+          $profilePath = Join-Path $env:LOCALAPPDATA 'SnoopyOS Company/OpenCore Helper/settings.json'
+          New-Item -ItemType Directory -Force -Path (Split-Path $profilePath) | Out-Null
+          Set-Content -Path $profilePath -Value '{"language":"pt-BR","appearance":"Light"}' -Encoding utf8
+          $upgrade = Start-Process -FilePath $installer -ArgumentList '/S' -Wait -PassThru
+          if ($upgrade.ExitCode -ne 0) { throw 'Reinstallation failed' }
+          $settings = Get-Content $profilePath -Raw | ConvertFrom-Json
+          if ($settings.language -ne 'pt-BR') { throw 'Update lost preferences' }
+          $uninstaller = Join-Path (Split-Path $installed) 'Uninstall.exe'
+          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw 'Uninstallation failed' }
+          if (-not (Test-Path $profilePath)) { throw 'Uninstall lost user preferences' }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Windows-x64
+          if-no-files-found: error
+          path: |
+            dist/*-Windows-x64.zip
+            dist/*-Setup-x64.exe
+            dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: GUI-screenshots
+          path: artifacts/screenshots/
+  release:
+    needs: windows
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Publish this version once after all checks pass
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version="$(tr -d '\r\n' < VERSION)"
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v$version already exists; preserving its tag and assets"
+            exit 0
+          fi
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name Windows-x64 --dir release-assets
+          gh release create "v$version" release-assets/* \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "OpenCore Helper $version · CustomTkinter" \
+            --notes-file "docs/releases/$version.md"
