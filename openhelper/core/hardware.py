@@ -11,7 +11,8 @@ from openhelper.core.validation import Issue
 from openhelper.errors import AppError
 
 # Fixed commands only; no user input is interpolated into PowerShell.
-HARDWARE_SCRIPT = r"""+$ErrorActionPreference = 'Stop'
+HARDWARE_SCRIPT = r"""
+$ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $result = [ordered]@{}
 $queries = [ordered]@{
