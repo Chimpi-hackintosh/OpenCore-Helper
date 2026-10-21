@@ -1,0 +1,14 @@
+name: Executar macOS na Nuvem
+on: [push]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Verificar código
+        uses: actions/checkout@v4
+
+      - name: Ver versão do macOS e Hardware
+        run: |
+          sw_vers
+          uname -a
