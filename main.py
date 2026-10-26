@@ -30,7 +30,7 @@ def main():
 
     settings = Settings()
     translate = Translator(settings.get("language"))
-    if os.name != "nt" and os.environ.get("OCH_DEV_ALLOW_NON_WINDOWS") != "1":
+    if sys.platform not in ("win32", "darwin") and os.environ.get("OCH_DEV_ALLOW_NON_WINDOWS") != "1":
         import tkinter as tk
         from tkinter import messagebox
 
@@ -66,4 +66,3 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

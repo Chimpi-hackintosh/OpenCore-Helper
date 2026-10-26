@@ -1,4 +1,4 @@
-"""Exercise real widgets on Windows (or a development X display); no network or hardware mutation."""
+"""Exercise real widgets on Windows/macOS or a development X display; no hardware mutation."""
 from __future__ import annotations
 
 import argparse
@@ -44,7 +44,7 @@ def main():
                     args.screenshots.mkdir(parents=True, exist_ok=True)
                     # xdisplay avoids platform-specific screenshot helpers on Linux.
                     import os
-                    options = {"xdisplay": os.environ["DISPLAY"]} if os.name != "nt" else {}
+                    options = {"xdisplay": os.environ["DISPLAY"]} if sys.platform.startswith("linux") else {}
                     x, y = app.winfo_rootx(), app.winfo_rooty()
                     image = ImageGrab.grab(bbox=(x, y, x + app.winfo_width(), y + app.winfo_height()), **options)
                     image.save(args.screenshots / f"{language}-{page}.png")
