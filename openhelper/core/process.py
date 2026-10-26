@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 from openhelper.errors import AppError
@@ -19,6 +20,11 @@ def run_tool(executable: str, arguments: list[str], *, timeout=120, cwd: Path | 
 
 def launch_ocat(executable: str, config: Path | None):
     binary = Path(executable).expanduser()
+    if sys.platform == "darwin" and binary.suffix.lower() == ".app" and binary.is_dir():
+        if not (binary / "Contents" / "Info.plist").is_file():
+            raise AppError("tool_not_found", file=str(binary))
+        return subprocess.Popen(["/usr/bin/open", "-a", str(binary.resolve()),
+                                 *([str(config.resolve())] if config else [])], close_fds=True)
     if not binary.is_file():
         raise AppError("tool_not_found", file=str(binary))
     return subprocess.Popen([str(binary.resolve()), *([str(config)] if config else [])],

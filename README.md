@@ -1,6 +1,6 @@
 # OpenCore Helper 3.0.1
 
-Aplicativo para **Windows x64**, feito em **CustomTkinter**, que reúne o editor Auxiliary Tools, análise OHV, organização de EFI, backups, downloads oficiais e macOS Recovery
+Aplicativo para **Windows x64 e macOS Intel x64**, feito em **CustomTkinter**, que reúne o editor Auxiliary Tools, análise OHV, organização de EFI, backups, downloads oficiais e macOS Recovery
 
 [![Windows build](https://github.com/Chimpi-hackintosh/OpenCore-Helper/actions/workflows/windows.yml/badge.svg)](https://github.com/Chimpi-hackintosh/OpenCore-Helper/actions/workflows/windows.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -17,6 +17,12 @@ O EXE inclui Python e suas dependências e não precisa de Python instalado no c
 
 Os arquivos de uma versão aparecem após a conclusão do workflow **Windows build and release** — o workflow testa e compila o aplicativo antes de publicar a versão, preservando lançamentos já existentes
 
+## macOS Intel x64
+
+A distribuição macOS é preparada pelo workflow **OpenCore Helper - macOS x64** e fica disponível nos Artifacts da execução, sem publicar Releases automaticamente
+
+O pacote inclui Python e Tcl/Tk e tem alvo mínimo macOS 10.15 Catalina. O build confere arquitetura e versões mínimas de todos os binários; os sistemas antigos ainda precisam de testes reais. Veja [compilação, compatibilidade e instalação no macOS](docs/MACOS.md)
+
 ## O que está implementado
 
 | Área | Funcionalidades |
@@ -28,17 +34,17 @@ Os arquivos de uma versão aparecem após a conclusão do workflow **Windows bui
 | SMBIOS | Edição de PlatformInfo/Generic, geração com macserial oficial configurado pelo usuário, UUID e ROM locais e exclusivos |
 | Validação | Tipos, caminhos, arquivos ausentes, referências duplicadas e execução opcional do ocvalidate da mesma versão do OpenCore |
 | EFI | Inspeção de cópias, backup ZIP com manifesto SHA-256, restauração verificada em pasta nova e área de trabalho a partir do OpenCorePkg oficial |
-| OHV | Leitura de CPU, GPU, RAM, placa-mãe, BIOS, armazenamento, rede e áudio por CIM do Windows; análise preliminar com pendências explícitas |
+| OHV | Leitura de CPU, GPU, RAM, placa-mãe, BIOS, armazenamento, rede e áudio por CIM do Windows ou system_profiler/sysctl do macOS; análise preliminar com pendências explícitas |
 | Downloads | Consulta à versão estável mais recente de OpenCorePkg, OCAT, Lilu, WhateverGreen, VirtualSMC, AppleALC e IntelMausi; conferência do digest quando fornecido pelo GitHub |
 | Recovery | macrecovery oficial incluído, download de DMG e chunklist da Apple com verificação, cancelamento, hash de imagens e conversão opcional em VMDK pelo qemu-img |
 | Relatórios | Exportação local em JSON, TXT e HTML com escaping de conteúdo |
-| Interface | Português e inglês, idioma automático pela interface do Windows, temas claro/escuro/sistema e tarefas demoradas fora da interface |
+| Interface | Português e inglês, idioma automático pelas preferências do Windows ou macOS, temas claro/escuro/sistema e tarefas demoradas fora da interface |
 
 ## Auxiliary Tools e o OCAT original
 
 O editor integrado é uma implementação independente em CustomTkinter do editor do OpenCore Helper
 
-O **[OpenCore Auxiliary Tools de ic005k](https://github.com/ic005k/OCAuxiliaryTools)** é um projeto separado em Qt e mantém sua autoria original. Para usá-lo junto do Helper, baixe seu ZIP oficial, extraia e selecione o EXE em **Configurações → Executável do OCAT oficial**. O botão **Abrir OCAT oficial** abre o arquivo salvo atual nesse aplicativo
+O **[OpenCore Auxiliary Tools de ic005k](https://github.com/ic005k/OCAuxiliaryTools)** é um projeto separado em Qt e mantém sua autoria original. Para usá-lo junto do Helper, baixe seu ZIP oficial, extraia e selecione o EXE no Windows ou o aplicativo `.app` no macOS em **Configurações → Executável do OCAT oficial**. O botão **Abrir OCAT oficial** abre o arquivo salvo atual nesse aplicativo
 
 O editor integrado não promete paridade com todos os recursos do OCAT original. Ele não migra automaticamente um config entre versões do OpenCore nem instala patches no sistema
 
@@ -63,7 +69,7 @@ O catálogo de versões e as instruções de recuperação são abertos nas font
 
 ## Executar pelo código
 
-Requisitos de desenvolvimento: Windows x64, Python x64 3.12 ou superior e Tcl/Tk incluído no Python
+Requisitos de desenvolvimento: Windows x64 ou macOS Intel x64, Python 3.12 ou superior e Tcl/Tk incluído no Python. Para a distribuição macOS, use o Python oficial indicado em [MACOS.md](docs/MACOS.md)
 
 ```powershell
 py -3.12 -m venv .venv
@@ -117,11 +123,11 @@ Consulte [arquitetura](docs/ARCHITECTURE.md), [migração da versão anterior](d
 
 OHV é uma análise preliminar e não oferece um percentual inventado de compatibilidade. A validação interna não substitui o esquema do OpenCore nem o ocvalidate. O aplicativo trabalha com arquivos e pastas escolhidos pelo usuário, sem montar, formatar ou gravar partições do sistema. As ferramentas externas são opcionais e só são executadas por ação do usuário
 
-Esta edição é destinada ao Windows x64. A variável `OCH_DEV_ALLOW_NON_WINDOWS=1` permite somente testes da interface em desenvolvimento no Linux; não é uma distribuição macOS/Linux
+As distribuições são Windows x64 e macOS Intel x64. A variável `OCH_DEV_ALLOW_NON_WINDOWS=1` permite somente testes da interface em desenvolvimento no Linux; não é uma distribuição Linux
 
 ## English
 
-OpenCore Helper 3.0.1 is an independent Windows x64 CustomTkinter application with a typed plist editor, EFI inspection and verified backups, preliminary hardware findings, upstream release downloads, SMBIOS editing through a user-selected macserial, Apple recovery downloads using bundled macrecovery, optional QEMU image conversion, and local reports
+OpenCore Helper 3.0.1 is an independent Windows x64 and macOS Intel x64 CustomTkinter application with a typed plist editor, EFI inspection and verified backups, preliminary hardware findings, upstream release downloads, SMBIOS editing through a user-selected macserial, Apple recovery downloads using bundled macrecovery, optional QEMU image conversion, and local reports
 
 Download the setup or portable ZIP from Releases after the Windows build succeeds. The packaged application includes Python. The original Qt-based OCAT remains a separate project and can be launched through Settings. Match ocvalidate to your OpenCore release and review hardware-specific configuration before using any EFI
 
