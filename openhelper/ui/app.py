@@ -27,6 +27,7 @@ from openhelper.i18n import Translator
 from openhelper.paths import data_root
 from openhelper.storage import Settings
 from openhelper.ui.editor import PlistEditor
+from support_notice import attach_tk
 
 
 class Application(ctk.CTk):
@@ -103,6 +104,7 @@ class Application(ctk.CTk):
         self.bind(f"<{modifier}-s>", lambda _: self.editor.save())
         self.bind("<Configure>", self.resize_notes, add="+")
         self.after(100, self.poll_messages)
+        attach_tk(self, "OpenCore-Helper", __version__)
 
     def _build_sidebar(self):
         side = ctk.CTkFrame(self, width=200, corner_radius=0, fg_color=("#e5ecf6", "#131e30"))

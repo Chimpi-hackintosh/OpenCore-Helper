@@ -132,3 +132,7 @@ OpenCore Helper 3.0.1 is an independent Windows x64 and macOS Intel x64 CustomTk
 Download the setup or portable ZIP from Releases after the Windows build succeeds. The packaged application includes Python. The original Qt-based OCAT remains a separate project and can be launched through Settings. Match ocvalidate to your OpenCore release and review hardware-specific configuration before using any EFI
 
 MIT license for original project code; see third-party notices for bundled components
+
+## Aviso de suporte
+
+Aviso traduzido, data de 04/11/2026, versões e limites de distribuição em [SUPPORT.md](SUPPORT.md)
