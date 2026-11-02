@@ -1,4 +1,4 @@
-# OpenCore Helper 3.0.1
+# OpenCore Helper 3.0.2
 
 Aplicativo para **Windows x64**, feito em **CustomTkinter**, que reúne o editor Auxiliary Tools, análise OHV, organização de EFI, backups, downloads oficiais e macOS Recovery
 
@@ -9,8 +9,8 @@ Aplicativo para **Windows x64**, feito em **CustomTkinter**, que reúne o editor
 
 Baixe o instalador ou pacote portátil em [Releases](https://github.com/Chimpi-hackintosh/OpenCore-Helper/releases)
 
-- `OpenCoreHelper-3.0.1-Setup-x64.exe`: instalação em Program Files, atalho no menu Iniciar e desinstalador
-- `OpenCoreHelper-3.0.1-Windows-x64.zip`: extraia a pasta inteira e abra `OpenCoreHelper.exe`
+- `OpenCoreHelper-3.0.2-Setup-x64.exe`: instalação em Program Files, atalho no menu Iniciar e desinstalador
+- `OpenCoreHelper-3.0.2-Windows-x64.zip`: extraia a pasta inteira e abra `OpenCoreHelper.exe`
 - `SHA256SUMS.txt`: hashes dos pacotes publicados
 
 O EXE inclui Python e suas dependências e não precisa de Python instalado no computador de destino
@@ -111,7 +111,7 @@ O seletor de idioma tem prioridade sobre os idiomas de interface do Windows; na 
 
 O workflow verifica os testes em Linux e Windows, percorre as telas nos dois idiomas, compila o EXE, testa sua abertura fora da pasta de instalação e executa instalação, atualização e desinstalação em um runner Windows. Esses testes não validam inicialização de macOS nem todas as combinações de hardware
 
-Consulte [arquitetura](docs/ARCHITECTURE.md), [migração da versão anterior](docs/MIGRATION.md), [notas 3.0.1](docs/releases/3.0.1.md) e [componentes de terceiros](THIRD_PARTY_NOTICES.md)
+Consulte [notas 3.0.2](docs/releases/3.0.2.md), [arquitetura](docs/ARCHITECTURE.md), [migração da versão anterior](docs/MIGRATION.md), [notas 3.0.1](docs/releases/3.0.1.md) e [componentes de terceiros](THIRD_PARTY_NOTICES.md)
 
 ## Limites
 
@@ -121,7 +121,7 @@ Esta edição é destinada ao Windows x64. A variável `OCH_DEV_ALLOW_NON_WINDOW
 
 ## English
 
-OpenCore Helper 3.0.1 is an independent Windows x64 CustomTkinter application with a typed plist editor, EFI inspection and verified backups, preliminary hardware findings, upstream release downloads, SMBIOS editing through a user-selected macserial, Apple recovery downloads using bundled macrecovery, optional QEMU image conversion, and local reports
+OpenCore Helper 3.0.2 is an independent Windows x64 CustomTkinter application with a typed plist editor, EFI inspection and verified backups, preliminary hardware findings, upstream release downloads, SMBIOS editing through a user-selected macserial, Apple recovery downloads using bundled macrecovery, optional QEMU image conversion, and local reports
 
 Download the setup or portable ZIP from Releases after the Windows build succeeds. The packaged application includes Python. The original Qt-based OCAT remains a separate project and can be launched through Settings. Match ocvalidate to your OpenCore release and review hardware-specific configuration before using any EFI
 

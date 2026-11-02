@@ -4,7 +4,7 @@ Unicode True
 !include "LogicLib.nsh"
 
 !ifndef VERSION
-  !define VERSION "3.0.1"
+  !define VERSION "3.0.2"
 !endif
 !ifndef STAGING
   !define STAGING "..\dist\OpenCoreHelper"
@@ -16,7 +16,7 @@ InstallDir "$PROGRAMFILES64\SnoopyOS Company\OpenCore Helper"
 InstallDirRegKey HKLM "Software\SnoopyOS Company\OpenCore Helper" "InstallDir"
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
-VIProductVersion "3.0.1.0"
+VIProductVersion "3.0.2.0"
 VIAddVersionKey "ProductName" "OpenCore Helper"
 VIAddVersionKey "CompanyName" "SnoopyOS Company"
 VIAddVersionKey "FileVersion" "${VERSION}"
