@@ -96,6 +96,30 @@ def test_download_without_published_digest_does_not_claim_verified(tmp_path, mon
         download_asset(Asset("bad.zip", "https://example.com/bad.zip", 0, None), tmp_path / "bad.zip")
 
 
+def test_recovery_does_not_claim_unverified_chunklist(tmp_path, monkeypatch):
+    class CompletedRecovery:
+        returncode = 0
+
+        def poll(self):
+            return 0
+
+    def fake_popen(command, **kwargs):
+        output = Path(command[-2])
+        output.mkdir(parents=True)
+        (output / "BaseSystem.dmg").write_bytes(b"recovery image")
+        (output / "BaseSystem.chunklist").write_bytes(b"not cryptographically checked")
+        return CompletedRecovery()
+
+    monkeypatch.setattr(recovery.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(recovery, "data_root", lambda: tmp_path)
+    result = recovery.download_recovery(
+        "Mac-27AD2F918AE68F61", "0" * 17, "latest", tmp_path / "recovery", Event()
+    )
+    assert result["chunklist_verified"] is False
+    assert result["sha256"] == hashlib.sha256(b"recovery image").hexdigest()
+    assert (tmp_path / "recovery" / "BaseSystem.chunklist").exists()
+
+
 def test_recovery_parameters_are_validated_before_starting_a_child(tmp_path):
     with pytest.raises(AppError, match="invalid_recovery_parameters"):
         recovery.download_recovery("invalid", "0" * 17, "latest", tmp_path / "new", Event())
