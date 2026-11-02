@@ -7,7 +7,7 @@ import sys
 
 
 def main():
-    parser = argparse.ArgumentParser(description="OpenCore Helper 3.0.1")
+    parser = argparse.ArgumentParser(description="OpenCore Helper 3.0.2")
     parser.add_argument("config", nargs="?")
     parser.add_argument("--version", action="store_true")
     parser.add_argument("--smoke-test", action="store_true", help="Open all views and exit for GUI verification")
