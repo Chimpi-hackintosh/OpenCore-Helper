@@ -203,7 +203,7 @@ class PlistEditor(ctk.CTkFrame):
                 self.tree.selection_set(item)
                 break
         self.file_label.configure(text=f"{'* ' if self.doc.dirty else ''}{self.doc.path or self.t('no_file')}")
-        self.app.title(f"{'* ' if self.doc.dirty else ''}OpenCore Helper 3.0.1")
+        self.app.title(f"{'* ' if self.doc.dirty else ''}OpenCore Helper 3.0.2")
 
     def select(self, _=None):
         selection = self.tree.selection()

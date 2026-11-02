@@ -10,7 +10,7 @@ O texto explica o risco de falhas sem afirmar que o usuário ou o aplicativo já
 
 | Aplicativo | Versão publicada conferida em 01/11/2026 | Mínima |
 | --- | --- | --- |
-| OpenCore Helper | v3.0.1 | 3.0.1 |
+| OpenCore Helper | v3.0.2 | 3.0.2 |
 
 ## Comportamento
 

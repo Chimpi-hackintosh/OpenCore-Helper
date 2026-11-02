@@ -69,5 +69,6 @@ def download_recovery(board: str, mlb: str, variant: str, destination: Path, can
             raise AppError("recovery_failed", detail="BaseSystem.dmg / BaseSystem.chunklist")
         digest = sha256_file(image)
         output.rename(destination)
-    return {"path": str(destination), "sha256": digest, "chunklist_verified": True, "log": str(log)}
+    # Presence alone is not cryptographic validation of Apple's chunklist.
+    return {"path": str(destination), "sha256": digest, "chunklist_verified": False, "log": str(log)}
 

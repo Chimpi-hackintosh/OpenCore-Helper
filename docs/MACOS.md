@@ -31,7 +31,7 @@ verificações e a versão do sistema do build.
 3. Clique em **Run workflow** e escolha a branch que contém esta implementação
 4. Aguarde os dois jobs terminarem com sucesso
 5. Abra a execução e baixe **Artifacts → OpenCoreHelper-macOS-x64**
-6. Extraia o ZIP do artifact e, depois, `OpenCoreHelper-3.0.1-macOS-x64.zip`
+6. Extraia o ZIP do artifact e, depois, `OpenCoreHelper-3.0.2-macOS-x64.zip`
 
 O pacote interno contém **OpenCore Helper.app**. Copie-o para **Aplicativos**.
 O usuário final não precisa instalar Python nem CustomTkinter. A assinatura é
@@ -73,7 +73,7 @@ python scripts/gui_smoke.py
 python scripts/build_macos.py
 ```
 
-Saída: `dist/OpenCoreHelper-3.0.1-macOS-x64.zip`, hash SHA-256 e relatório do build.
+Saída: `dist/OpenCoreHelper-3.0.2-macOS-x64.zip`, hash SHA-256 e relatório do build.
 O ZIP é criado com `ditto` para preservar permissões e links simbólicos do `.app`.
 O workflow disponibiliza artifacts; ele não publica Releases automaticamente.
 
