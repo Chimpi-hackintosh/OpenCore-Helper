@@ -30,7 +30,7 @@ Os arquivos de uma versão aparecem após a conclusão do workflow **Windows bui
 | EFI | Inspeção de cópias, backup ZIP com manifesto SHA-256, restauração verificada em pasta nova e área de trabalho a partir do OpenCorePkg oficial |
 | OHV | Leitura de CPU, GPU, RAM, placa-mãe, BIOS, armazenamento, rede e áudio por CIM do Windows; análise preliminar com pendências explícitas |
 | Downloads | Consulta à versão estável mais recente de OpenCorePkg, OCAT, Lilu, WhateverGreen, VirtualSMC, AppleALC e IntelMausi; conferência do digest quando fornecido pelo GitHub |
-| Recovery | macrecovery oficial incluído, download de DMG e chunklist da Apple com verificação, cancelamento, hash de imagens e conversão opcional em VMDK pelo qemu-img |
+| Recovery | macrecovery oficial incluído, download de DMG e chunklist da Apple, verificação de presença dos arquivos, SHA-256 local do DMG, cancelamento e conversão opcional em VMDK pelo qemu-img |
 | Relatórios | Exportação local em JSON, TXT e HTML com escaping de conteúdo |
 | Interface | Português e inglês, idioma automático pela interface do Windows, temas claro/escuro/sistema e tarefas demoradas fora da interface |
 
