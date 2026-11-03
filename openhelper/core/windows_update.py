@@ -31,6 +31,7 @@ MESSAGES = {
     "en": {
         "required": "Update required. Save your work before closing the app to run Setup.",
         "install": "Prepare update",
+        "save": "Save work",
         "exit": "Exit app",
         "preparing": "Downloading and verifying the official installer…",
         "ready": "Installer verified. Close the app and open Setup?",
@@ -43,6 +44,7 @@ MESSAGES = {
     "pt": {
         "required": "Atualização obrigatória. Salve seu trabalho antes de fechar o aplicativo para abrir o instalador.",
         "install": "Preparar atualização",
+        "save": "Salvar trabalho",
         "exit": "Sair do app",
         "preparing": "Baixando e conferindo o instalador oficial…",
         "ready": "Instalador conferido. Fechar o aplicativo e abrir o instalador?",
@@ -285,5 +287,10 @@ def bind_dialog(root, window, buttons, item, lang):
     install_button = ttk.Button(buttons, text=tr["install"], command=install)
     install_button.pack(side="left", padx=4)
     install_button.focus_set()
-    if retry:
-        ttk.Button(buttons, text=tr["folder"], command=lambda: os.startfile(str(staging))).pack(side="left", padx=4)
+    if retry or root.editor.doc.dirty:
+        options = ttk.Frame(window)
+        options.grid(row=4, column=0, padx=22, pady=(0, 20), sticky="w")
+        if root.editor.doc.dirty:
+            ttk.Button(options, text=tr["save"], command=root.editor.save).pack(side="left", padx=4)
+        if retry:
+            ttk.Button(options, text=tr["folder"], command=lambda: os.startfile(str(staging))).pack(side="left", padx=4)
