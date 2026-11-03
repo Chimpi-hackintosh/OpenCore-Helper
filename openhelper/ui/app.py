@@ -5,6 +5,7 @@ import logging
 import os
 import queue
 import subprocess
+import sys
 import threading
 import webbrowser
 from concurrent.futures import ThreadPoolExecutor
@@ -26,6 +27,7 @@ from openhelper.i18n import Translator
 from openhelper.paths import data_root
 from openhelper.storage import Settings
 from openhelper.ui.editor import PlistEditor
+from support_notice import attach_tk
 
 
 class Application(ctk.CTk):
@@ -59,6 +61,7 @@ class Application(ctk.CTk):
         self.messages = queue.Queue()
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="OpenCoreHelper")
         self.callback_errors = []
+        self.pending_update = None
         self._build_sidebar()
         self.main_area = ctk.CTkFrame(self, fg_color="transparent")
         self.main_area.grid(row=0, column=1, sticky="nsew", padx=26, pady=22)
@@ -97,10 +100,12 @@ class Application(ctk.CTk):
         self.style_tree()
         self.show_page("home")
         self.protocol("WM_DELETE_WINDOW", self.close)
-        self.bind("<Control-o>", lambda _: self.editor.open())
-        self.bind("<Control-s>", lambda _: self.editor.save())
+        modifier = "Command" if sys.platform == "darwin" else "Control"
+        self.bind(f"<{modifier}-o>", lambda _: self.editor.open())
+        self.bind(f"<{modifier}-s>", lambda _: self.editor.save())
         self.bind("<Configure>", self.resize_notes, add="+")
         self.after(100, self.poll_messages)
+        attach_tk(self, "OpenCore-Helper", __version__)
 
     def _build_sidebar(self):
         side = ctk.CTkFrame(self, width=200, corner_radius=0, fg_color=("#e5ecf6", "#131e30"))
@@ -144,7 +149,8 @@ class Application(ctk.CTk):
 
     def output(self, parent, row):
         parent.grid_rowconfigure(row, weight=1)
-        box = ctk.CTkTextbox(parent, font=ctk.CTkFont(family="Consolas", size=13), wrap="word")
+        box = ctk.CTkTextbox(parent, font=ctk.CTkFont(
+            family="Menlo" if sys.platform == "darwin" else "Consolas", size=13), wrap="word")
         box.grid(row=row, column=0, sticky="nsew")
         box.configure(state="disabled")
         return box
@@ -533,8 +539,10 @@ class Application(ctk.CTk):
                          lambda _: self.set_status(self.t("report_saved", file=path)))
 
     def choose_executable(self, entry):
-        path = filedialog.askopenfilename(parent=self, filetypes=[(self.t("executable"), "*.exe"),
-                                                                 (self.t("all_files"), "*.*")])
+        filetypes = [(self.t("executable"), "*.exe"), (self.t("all_files"), "*.*")]
+        if sys.platform == "darwin":
+            filetypes = [(self.t("macos_application"), "*.app"), (self.t("all_files"), "*")]
+        path = filedialog.askopenfilename(parent=self, filetypes=filetypes)
         if path:
             entry.delete(0, "end")
             entry.insert(0, path)
@@ -543,8 +551,11 @@ class Application(ctk.CTk):
         language = self.language_values[self.language.get()]
         appearance = self.appearance_values[self.appearance.get()]
         tools = {key: entry.get().strip().strip('"') for key, entry in self.tool_entries.items()}
-        for path in tools.values():
-            if path and not Path(path).is_file():
+        for key, path in tools.items():
+            binary = Path(path).expanduser()
+            app_bundle = (sys.platform == "darwin" and key == "ocat_path" and
+                          binary.suffix.lower() == ".app" and (binary / "Contents" / "Info.plist").is_file())
+            if path and not binary.is_file() and not app_bundle:
                 raise AppError("tool_not_found", file=path)
         self.settings.save(language=language, appearance=appearance, **tools)
         ctk.set_appearance_mode(appearance)
@@ -555,14 +566,20 @@ class Application(ctk.CTk):
     def open_folder(path):
         if os.name == "nt":
             os.startfile(str(path))
+        elif sys.platform == "darwin":
+            subprocess.Popen(["/usr/bin/open", str(path)])
         else:
             subprocess.Popen(["xdg-open", str(path)])
 
-    def close(self):
+    def request_update_close(self, update):
+        self.close(update=update)
+
+    def close(self, *, update=None):
         if self.busy:
             self.present_error(AppError("task_running_close"))
             return
         if self.editor.confirm_discard():
+            self.pending_update = update
             self.executor.shutdown(wait=False, cancel_futures=True)
             self.destroy()
 
@@ -574,4 +591,3 @@ class Application(ctk.CTk):
             self.tk.call("after", "cancel", timer)
         self.executor.shutdown(wait=False, cancel_futures=True)
         super().destroy()
-

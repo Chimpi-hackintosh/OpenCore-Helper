@@ -10,6 +10,8 @@ from openhelper import APP_NAME, PUBLISHER
 
 def resource_root() -> Path:
     if getattr(sys, "frozen", False):
+        if sys.platform == "darwin":
+            return Path(sys.executable).resolve().parent.parent / "Resources"
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parent.parent
 
@@ -26,9 +28,10 @@ def data_root() -> Path:
         if result != 0:
             raise OSError("SHGetFolderPathW failed", result)
         root = Path(buffer.value)
-    else:  # Development and automated QA only; the distributed app is Windows-only.
+    elif sys.platform == "darwin":
+        root = Path.home() / "Library" / "Application Support"
+    else:  # Development and automated QA on Linux.
         root = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
     target = root / PUBLISHER / APP_NAME
     target.mkdir(parents=True, exist_ok=True)
     return target
-

@@ -1,14 +1,133 @@
-name: Executar macOS na Nuvem
-on: [push]
+name: OpenCore Helper - macOS x64
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, codex/macos-x64]
+    paths:
+      - '.github/workflows/macOS.yml'
+      - 'main.py'
+      - 'openhelper/**'
+      - 'locales/**'
+      - 'packaging/*macOS*'
+      - 'packaging/macos_runtime.py'
+      - 'scripts/build_macos.py'
+      - 'scripts/gui_smoke.py'
+      - 'tests/**'
+      - 'requirements*.txt'
+      - 'settings.default.json'
+      - 'VERSION'
+      - 'docs/MACOS.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-x64-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-    runs-on: macos-latest
-    steps:
-      - name: Verificar código
-        uses: actions/checkout@v4
+    name: Build Intel x64 (target macOS 10.15+)
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '10.15'
+      SSL_CERT_FILE: /etc/ssl/cert.pem
 
-      - name: Ver versão do macOS e Hardware
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # The python.org framework includes native Tcl/Tk and targets Catalina+.
+      # GitHub's cached Python is not used for a backwards-compatible package.
+      - name: Install verified Python framework
         run: |
-          sw_vers
-          uname -a
+          curl --fail --location --retry 3 \
+            https://www.python.org/ftp/python/3.14.10/python-3.14.10-macos11.pkg \
+            --output "$RUNNER_TEMP/python.pkg"
+          printf '%s  %s\n' \
+            '286c7018aa2730f6747ca433dccdc2b31be45f078a9ea0ffa44d5f06368fd2d7' \
+            "$RUNNER_TEMP/python.pkg" | shasum -a 256 --check
+          pkgutil --check-signature "$RUNNER_TEMP/python.pkg"
+          sudo installer -pkg "$RUNNER_TEMP/python.pkg" -target /
+          /Library/Frameworks/Python.framework/Versions/3.14/bin/python3.14 -m venv .venv-macos
+          echo "$GITHUB_WORKSPACE/.venv-macos/bin" >> "$GITHUB_PATH"
+
+      - name: Install pinned dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --only-binary=:all: -r requirements-macos.txt
+          python -m pip check
+          python -c "import platform, tkinter; assert platform.machine() == 'x86_64'; print(tkinter.Tcl().eval('info patchlevel'))"
+
+      - name: Test and lint
+        run: |
+          python -m pytest -q
+          python -m ruff check main.py openhelper scripts tests --exclude openhelper/vendor
+
+      - name: Exercise all views in both languages
+        run: python scripts/gui_smoke.py
+
+      - name: Read native macOS hardware
+        run: |
+          python - <<'PY'
+          from openhelper.core.hardware import scan_hardware
+          inventory = scan_hardware()
+          assert inventory['system']['architecture'] == 'x86_64'
+          assert inventory['cpu']
+          print('Native macOS inventory verified')
+          PY
+
+      - name: Build and verify Intel app
+        run: python scripts/build_macos.py
+
+      - name: Open packaged app outside its build directory
+        run: |
+          python - <<'PY'
+          import subprocess
+          import tempfile
+          from pathlib import Path
+          binary = Path('dist/OpenCore Helper.app/Contents/MacOS/OpenCoreHelper').resolve()
+          with tempfile.TemporaryDirectory(prefix='OpenCore Helper smoke ') as directory:
+              subprocess.run([str(binary), '--smoke-test'], cwd=directory, timeout=90, check=True)
+          PY
+
+      - name: Upload macOS x64 app
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenCoreHelper-macOS-x64
+          path: |
+            dist/*-macOS-x64.zip
+            dist/SHA256SUMS-macOS-x64.txt
+            dist/macos-build-report.json
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  test-newer-macos:
+    name: Open the same app on macOS 26 Intel
+    needs: build
+    runs-on: macos-26-intel
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: OpenCoreHelper-macOS-x64
+          path: download
+      - name: Extract and exercise the packaged app
+        run: |
+          python3 - <<'PY'
+          import os
+          import subprocess
+          from pathlib import Path
+          archive = next(Path('download').glob('*-macOS-x64.zip'))
+          destination = Path(os.environ['RUNNER_TEMP']) / 'OpenCore Helper validation'
+          destination.mkdir()
+          subprocess.run(['/usr/bin/ditto', '-x', '-k', str(archive), str(destination)], check=True)
+          app = destination / 'OpenCore Helper.app'
+          subprocess.run(['/usr/bin/codesign', '--verify', '--deep', '--strict', str(app)], check=True)
+          subprocess.run([str(app / 'Contents/MacOS/OpenCoreHelper'), '--smoke-test'],
+                         cwd=destination.parent, timeout=90, check=True)
+          PY
