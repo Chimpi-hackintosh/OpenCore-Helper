@@ -18,8 +18,12 @@ O texto explica o risco de falhas sem afirmar que o usuário ou o aplicativo já
 - Compara versões numericamente e ignora sufixos de build quando o aplicativo só informa a série de versão
 - Consulta somente dados públicos de suporte por HTTPS, com prazo limitado e catálogo local quando está sem internet
 - Não envia arquivos, prompts, senhas, dados de hardware ou dados NFC
-- Mostra a versão instalada e a mínima, com opções de atualizar, ver a tabela ou deixar para depois
-- Abre a página oficial e preserva a decisão de baixar e instalar com o usuário
+- Antes do corte, o aviso mostra a versão instalada e a mínima e pode ser adiado
+- Depois do corte, ao abrir ou reabrir uma instalação registrada no Windows 11 x64 nativo, o aviso pede a atualização se o catálogo e o GitHub confirmarem o mesmo instalador estável e houver espaço para prepará-lo
+- A atualização baixa e confere o SHA-256 do instalador, usa a confirmação de fechamento do editor e abre o instalador normal do Windows, com as permissões exigidas pelo próprio instalador
+- Se a versão antiga ainda abrir após uma tentativa, a orientação de reinstalação só aparece com o pacote local novamente conferido e os pré-requisitos locais ainda válidos. O usuário precisa confirmar que a tentativa terminou, verificar os requisitos do instalador e guardar cópias dos dados antes de desinstalar manualmente
+- Se o pacote não puder ser verificado ou preparado, o aviso oferece a página oficial. Instalações portáteis, Windows fora da faixa da atualização assistida e macOS continuam com o aviso informativo
+- A atualização não solicita reinício do computador. Depois de concluir o instalador, reabra o aplicativo para conferir a versão
 
 A tabela pública fica em [Apps e suporte](https://chimpi-hackintosh.github.io/ChimpiBlender-Online/support.html) depois que o PR do site for integrado e o Pages for publicado
 

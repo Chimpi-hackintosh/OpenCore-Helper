@@ -61,6 +61,7 @@ class Application(ctk.CTk):
         self.messages = queue.Queue()
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="OpenCoreHelper")
         self.callback_errors = []
+        self.pending_update = None
         self._build_sidebar()
         self.main_area = ctk.CTkFrame(self, fg_color="transparent")
         self.main_area.grid(row=0, column=1, sticky="nsew", padx=26, pady=22)
@@ -570,11 +571,15 @@ class Application(ctk.CTk):
         else:
             subprocess.Popen(["xdg-open", str(path)])
 
-    def close(self):
+    def request_update_close(self, update):
+        self.close(update=update)
+
+    def close(self, *, update=None):
         if self.busy:
             self.present_error(AppError("task_running_close"))
             return
         if self.editor.confirm_discard():
+            self.pending_update = update
             self.executor.shutdown(wait=False, cancel_futures=True)
             self.destroy()
 

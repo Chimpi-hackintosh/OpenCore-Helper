@@ -61,6 +61,10 @@ def main():
             app.after(250, app.destroy)
         app.after(250, verify_views)
     app.mainloop()
+    if app.pending_update:
+        from openhelper.core.windows_update import launch_pending
+
+        launch_pending(*app.pending_update)
     return 1 if args.smoke_test and app.callback_errors else 0
 
 

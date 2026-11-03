@@ -31,9 +31,9 @@ def language(tag=None):
         try:
             if sys.platform == "win32":
                 import ctypes
-                buffer = ctypes.create_unicode_buffer(85)
-                if ctypes.windll.kernel32.GetUserDefaultLocaleName(buffer, len(buffer)):
-                    tag = buffer.value
+
+                ui_language = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+                tag = locale.windows_locale.get(ui_language, tag)
             elif sys.platform == "darwin":
                 tag = subprocess.check_output(["defaults", "read", "-g", "AppleLanguages"],
                                               timeout=2, stderr=subprocess.DEVNULL).decode()
@@ -161,16 +161,29 @@ def check(app, current):
     if app not in POLICY["apps"]:
         return None
     policy = copy.deepcopy(POLICY)
+    remote = releases = None
     try:
-        policy = checked_policy(read_json(POLICY_URL))
+        remote = read_json(POLICY_URL)
+        policy = checked_policy(remote)
     except (OSError, ValueError, TypeError):
         pass
     try:
         repo = POLICY["apps"][app]["repo"]
-        policy = with_releases(policy, app, read_json(f"https://api.github.com/repos/Chimpi-hackintosh/{repo}/releases?per_page=30"))
+        releases = read_json(f"https://api.github.com/repos/Chimpi-hackintosh/{repo}/releases?per_page=30")
+        policy = with_releases(policy, app, releases)
     except (OSError, ValueError, TypeError):
         pass
-    return notice(app, current, policy)
+    item = notice(app, current, policy)
+    if app == "OpenCore-Helper" and item and item["phase"] == "after" and sys.platform == "win32":
+        try:
+            from openhelper.core.windows_update import find_update
+
+            update = find_update(policy["apps"][app], remote, releases)
+        except (OSError, ValueError, TypeError):
+            update = None
+        if update:
+            item["windows_update"] = update
+    return item
 
 
 def enabled():
@@ -214,6 +227,11 @@ def attach_tk(root, app, current):
         ttk.Label(window, text=item["body"], wraplength=500, justify="left").grid(row=1, column=0, padx=22, pady=8, sticky="w")
         buttons = ttk.Frame(window)
         buttons.grid(row=2, column=0, padx=22, pady=20, sticky="e")
+        if "windows_update" in item and hasattr(root, "request_update_close"):
+            from openhelper.core.windows_update import bind_dialog
+
+            bind_dialog(root, window, buttons, item, language())
+            return
         ttk.Button(buttons, text=item["texts"]["table"], command=lambda: webbrowser.open(item["table"])).pack(side="left", padx=4)
         ttk.Button(buttons, text=item["texts"]["later"], command=window.destroy).pack(side="left", padx=4)
         ttk.Button(buttons, text=item["texts"]["update"], command=lambda: webbrowser.open(item["url"])).pack(side="left", padx=4)

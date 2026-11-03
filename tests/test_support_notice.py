@@ -1,9 +1,14 @@
 import copy
 import datetime as dt
+import hashlib
+import io
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import support_notice as support
+from openhelper.core import windows_update
 
 
 class SupportNoticeTests(unittest.TestCase):
@@ -69,6 +74,99 @@ class SupportNoticeTests(unittest.TestCase):
             self.assertFalse(support.enabled())
         with patch.dict(support.os.environ, {"CHIMPI_SUPPORT_CHECK": "0"}):
             self.assertFalse(support.enabled())
+
+
+class WindowsUpdateTests(unittest.TestCase):
+    def setUp(self):
+        self.payload = b"test installer bytes"
+        self.digest = hashlib.sha256(self.payload).hexdigest()
+        self.catalog = dict(windows_update.SETUP_302, digest="sha256:" + self.digest)
+        self.entry = support.POLICY["apps"]["OpenCore-Helper"]
+        self.asset = {
+            "name": "OpenCoreHelper-3.0.2-Setup-x64.exe",
+            "digest": self.catalog["digest"],
+            "size": len(self.payload),
+            "browser_download_url": (
+                "https://github.com/Chimpi-hackintosh/OpenCore-Helper/releases/download/"
+                "v3.0.2/OpenCoreHelper-3.0.2-Setup-x64.exe"
+            ),
+        }
+        self.release = {
+            "tag_name": "v3.0.2",
+            "html_url": self.entry["url"],
+            "draft": False,
+            "prerelease": False,
+            "published_at": "2026-11-02T13:41:00Z",
+            "assets": [self.asset],
+        }
+        self.setup = windows_update.select_setup(self.entry, self.catalog, [self.release])
+
+    def test_only_exact_approved_published_setup_is_eligible(self):
+        self.assertEqual(self.setup.digest, self.digest)
+        for changed in (
+            {"draft": True}, {"prerelease": True}, {"published_at": None},
+            {"assets": [dict(self.asset, digest=None)]},
+            {"assets": [dict(self.asset, browser_download_url="https://example.com/setup.exe")]},
+        ):
+            self.assertIsNone(windows_update.select_setup(self.entry, self.catalog, [dict(self.release, **changed)]))
+        self.assertIsNone(windows_update.select_setup(self.entry, dict(self.catalog, digest="sha256:" + "0" * 64),
+                                                     [self.release]))
+        self.assertIsNone(windows_update.select_setup(self.entry, dict(self.catalog, min_build=True), [self.release]))
+
+    def test_only_verified_local_package_enables_reinstall_guidance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            staging = Path(directory)
+            target = staging / self.setup.name
+            with patch.object(windows_update.urllib.request, "build_opener") as opener:
+                opener.return_value.open.side_effect = lambda *args, **kwargs: io.BytesIO(self.payload)
+                self.assertEqual(windows_update.stage(self.setup, staging), target)
+                self.assertEqual(target.read_bytes(), self.payload)
+            self.assertFalse(windows_update.attempted(self.setup, staging))
+            with patch.object(windows_update, "compatible", return_value=True), patch.object(
+                windows_update.os, "startfile", create=True
+            ) as start:
+                windows_update.launch(self.setup, staging)
+                start.assert_called_once_with(str(target))
+                self.assertTrue(windows_update.attempted(self.setup, staging))
+                target.write_bytes(b"tampered")
+                self.assertFalse(windows_update.attempted(self.setup, staging))
+                with self.assertRaises(ValueError):
+                    windows_update.launch(self.setup, staging)
+                start.assert_called_once()
+
+    def test_incorrect_bytes_are_never_staged(self):
+        for payload in (b"X" * self.setup.size, self.payload + b"X", b"short"):
+            with self.subTest(payload=payload), tempfile.TemporaryDirectory() as directory, patch.object(
+                windows_update.urllib.request, "build_opener"
+            ) as opener:
+                opener.return_value.open.return_value = io.BytesIO(payload)
+                with self.assertRaises(ValueError):
+                    windows_update.stage(self.setup, Path(directory))
+                self.assertEqual(list(Path(directory).iterdir()), [])
+
+    def test_release_redirects_reject_external_hosts_and_http(self):
+        for url in ("http://github.com/", "https://github.com.example.org/", "https://user@github.com/"):
+            self.assertFalse(windows_update.trusted_asset_host(url))
+        self.assertTrue(windows_update.trusted_asset_host("https://release-assets.githubusercontent.com/asset"))
+
+    def test_mandatory_flow_requires_post_cutoff_windows_and_an_older_version(self):
+        before = dt.datetime(2026, 11, 3, 23, 59, 59, tzinfo=dt.timezone.utc)
+        after = before + dt.timedelta(seconds=1)
+        notice = support.notice
+        with patch.object(support, "read_json", side_effect=[{}, [self.release]] * 3), patch.object(
+            support.sys, "platform", "win32"
+        ), patch.object(windows_update, "find_update", return_value=(self.setup, Path("updates"), False)) as find:
+            with patch.object(support, "notice", side_effect=lambda app, current, policy: notice(
+                app, current, policy, now=before, lang="en"
+            )):
+                self.assertNotIn("windows_update", support.check("OpenCore-Helper", "3.0.1"))
+            find.assert_not_called()
+            with patch.object(support, "notice", side_effect=lambda app, current, policy: notice(
+                app, current, policy, now=after, lang="en"
+            )):
+                self.assertIsNone(support.check("OpenCore-Helper", "3.0.2"))
+                self.assertIn("windows_update", support.check("OpenCore-Helper", "3.0.1"))
+            find.assert_called_once()
 
 
 if __name__ == "__main__":
