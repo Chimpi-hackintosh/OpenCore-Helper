@@ -72,7 +72,10 @@ def download_asset(asset: Asset, destination: Path, progress=None) -> tuple[Path
     try:
         with os.fdopen(fd, "wb") as stream:
             with urllib.request.urlopen(_request(asset.url), timeout=60) as response:
-                if urllib.parse.urlparse(response.url).scheme != "https":
+                if (urllib.parse.urlparse(response.url).scheme != "https" or
+                        urllib.parse.urlparse(response.url).hostname not in {
+                            "github.com", "release-assets.githubusercontent.com"
+                        }):
                     raise AppError("untrusted_download")
                 while chunk := response.read(256 * 1024):
                     stream.write(chunk)
