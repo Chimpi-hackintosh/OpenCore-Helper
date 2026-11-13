@@ -5,6 +5,7 @@ import os
 import platform
 import shutil
 import subprocess
+import sys
 from datetime import datetime, timezone
 
 from openhelper.core.validation import Issue
@@ -38,8 +39,12 @@ $result | ConvertTo-Json -Depth 6 -Compress
 
 
 def scan_hardware() -> dict:
+    if sys.platform == "darwin":
+        from openhelper.core.macos_hardware import scan_macos_hardware
+
+        return scan_macos_hardware()
     if os.name != "nt":
-        raise AppError("windows_scan_only")
+        raise AppError("hardware_scan_platform")
     powershell = shutil.which("powershell.exe")
     if not powershell:
         raise AppError("tool_not_found", file="Windows PowerShell")
@@ -85,4 +90,3 @@ def compatibility_findings(hardware: dict) -> list[Issue]:
     for group in hardware.get("unavailable", []):
         findings.append(Issue("warning", "ohv_query_unavailable", group))
     return findings
-
