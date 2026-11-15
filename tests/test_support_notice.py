@@ -184,7 +184,8 @@ class PrereleaseVersionTests(unittest.TestCase):
         self.assertEqual(support.POLICY["apps"]["ChimpiCode"]["minimum"], "1.1.0-preview.21")
         self.assertIsNotNone(support.notice("ChimpiCode", "1.1.0-preview.12"))
         self.assertIsNotNone(support.notice("ChimpiCode", "1.1.0-preview.15"))
-        self.assertIsNone(support.notice("ChimpiCode", "1.1.0-preview.18"));
+        self.assertIsNotNone(support.notice("ChimpiCode", "1.1.0-preview.18"))
+        self.assertIsNone(support.notice("ChimpiCode", "1.1.0-preview.21"))
         self.assertIsNone(support.notice("ChimpiCode", "1.1.0-preview.21"))
         self.assertIsNone(support.notice("ChimpiCode", "1.1.0"))
         previous = copy.deepcopy(support.POLICY)
