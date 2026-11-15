@@ -4,6 +4,9 @@ import ctypes
 import json
 import locale
 import os
+import re
+import subprocess
+import sys
 
 from openhelper.paths import resource_root
 
@@ -18,6 +21,16 @@ def preferred_languages() -> list[str]:
             if api(0x8, ctypes.byref(count), buffer, ctypes.byref(size)):
                 return [part for part in buffer[:size.value].split("\0") if part]
         return []
+    if sys.platform == "darwin":
+        try:
+            result = subprocess.run(["/usr/bin/defaults", "read", "-g", "AppleLanguages"],
+                                    capture_output=True, text=True, timeout=5, check=False)
+            if result.returncode == 0:
+                languages = re.findall(r"[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*", result.stdout)
+                if languages:
+                    return languages
+        except (OSError, subprocess.TimeoutExpired):
+            pass
     return [locale.getlocale()[0] or "en"]
 
 
@@ -40,4 +53,3 @@ class Translator:
 
     def __call__(self, message_key: str, **params) -> str:
         return self.strings.get(message_key, self.fallback.get(message_key, message_key)).format(**params)
-
