@@ -34,8 +34,6 @@ def test_rejects_untrusted_redirect_before_following(tmp_path, monkeypatch, redi
     def fake_build_opener(handler):
         class FakeOpener:
             def open(self, request, timeout):
-                # Simulate urllib receiving a 302. The handler must reject the
-                # Location before the opener can issue a request to that host.
                 next_request = handler.redirect_request(
                     request, None, 302, "Found", {"Location": redirect}, redirect
                 )
@@ -61,7 +59,11 @@ def test_rejects_untrusted_redirect_before_following(tmp_path, monkeypatch, redi
     assert not list(tmp_path.glob("*.part"))
 
 
-def test_accepts_official_release_asset_redirect(tmp_path, monkeypatch):
+@pytest.mark.parametrize("redirect", [
+    "https://release-assets.githubusercontent.com/official.zip",
+    "https://objects.githubusercontent.com/official.zip",
+])
+def test_accepts_known_github_asset_hosts(tmp_path, monkeypatch, redirect):
     content = b"official release payload"
     followed = []
 
@@ -69,12 +71,7 @@ def test_accepts_official_release_asset_redirect(tmp_path, monkeypatch):
         class FakeOpener:
             def open(self, request, timeout):
                 next_request = handler.redirect_request(
-                    request,
-                    None,
-                    302,
-                    "Found",
-                    {"Location": "https://release-assets.githubusercontent.com/official.zip"},
-                    "https://release-assets.githubusercontent.com/official.zip",
+                    request, None, 302, "Found", {"Location": redirect}, redirect
                 )
                 followed.append(next_request.full_url)
                 return FakeResponse(content, next_request.full_url)
@@ -92,7 +89,7 @@ def test_accepts_official_release_asset_redirect(tmp_path, monkeypatch):
 
     path, _, verified = download_asset(asset, target)
 
-    assert followed == ["https://release-assets.githubusercontent.com/official.zip"]
+    assert followed == [redirect]
     assert path == target
     assert path.read_bytes() == content
     assert verified is False
