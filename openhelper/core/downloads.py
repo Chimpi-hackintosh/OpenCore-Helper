@@ -23,6 +23,12 @@ REPOSITORIES = {
     "IntelMausi": "acidanthera/IntelMausi",
 }
 
+_ALLOWED_RELEASE_REDIRECT_HOSTS = frozenset({
+    "github.com",
+    "release-assets.githubusercontent.com",
+    "objects.githubusercontent.com",
+})
+
 
 @dataclass(frozen=True)
 class Asset:
@@ -42,6 +48,31 @@ class Release:
 
 def _request(url, **kwargs):
     return urllib.request.Request(url, headers={"User-Agent": f"OpenCore-Helper/{__version__}", **kwargs})
+
+
+def _trusted_release_redirect(url: str) -> bool:
+    """Validate a redirect target before urllib sends a request to it."""
+    try:
+        parsed = urllib.parse.urlsplit(url)
+        return (
+            parsed.scheme.lower() == "https"
+            and parsed.hostname is not None
+            and parsed.hostname.lower() in _ALLOWED_RELEASE_REDIRECT_HOSTS
+            and parsed.port in (None, 443)
+            and parsed.username is None
+            and parsed.password is None
+        )
+    except ValueError:
+        return False
+
+
+class _ReleaseRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Stop untrusted or plaintext redirects before following them."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not _trusted_release_redirect(newurl):
+            raise AppError("untrusted_download")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def latest_release(project: str) -> Release:
@@ -71,8 +102,10 @@ def download_asset(asset: Asset, destination: Path, progress=None) -> tuple[Path
     received = 0
     try:
         with os.fdopen(fd, "wb") as stream:
-            with urllib.request.urlopen(_request(asset.url), timeout=60) as response:
-                if urllib.parse.urlparse(response.url).scheme != "https":
+            opener = urllib.request.build_opener(_ReleaseRedirectHandler())
+            with opener.open(_request(asset.url), timeout=60) as response:
+                # Defense in depth for custom openers or non-redirect responses.
+                if not _trusted_release_redirect(response.url):
                     raise AppError("untrusted_download")
                 while chunk := response.read(256 * 1024):
                     stream.write(chunk)
@@ -94,4 +127,3 @@ def download_asset(asset: Asset, destination: Path, progress=None) -> tuple[Path
         raise AppError("network_error", detail=str(error)) from error
     finally:
         Path(temporary).unlink(missing_ok=True)
-

@@ -73,10 +73,27 @@ class Response(io.BytesIO):
     url = "https://release-assets.githubusercontent.com/official.zip"
 
 
+def fake_release_opener(handler, content):
+    class FakeOpener:
+        def open(self, request, timeout):
+            target = Response.url
+            redirected = handler.redirect_request(
+                request, None, 302, "Found", {"Location": target}, target
+            )
+            response = Response(content)
+            response.url = redirected.full_url
+            return response
+
+    return FakeOpener()
+
+
 def test_verified_download_and_failed_digest_cleanup(tmp_path, monkeypatch):
     content = b"release asset"
     digest = hashlib.sha256(content).hexdigest()
-    monkeypatch.setattr(downloads.urllib.request, "urlopen", lambda *a, **k: Response(content))
+    monkeypatch.setattr(
+        downloads.urllib.request, "build_opener",
+        lambda handler: fake_release_opener(handler, content),
+    )
     asset = Asset("OpenCore.zip", "https://github.com/acidanthera/OpenCorePkg/releases/download/1.0/OpenCore.zip",
                   len(content), "sha256:" + digest)
     path, computed, verified = download_asset(asset, tmp_path / "ok.zip")
@@ -89,7 +106,10 @@ def test_verified_download_and_failed_digest_cleanup(tmp_path, monkeypatch):
 
 
 def test_download_without_published_digest_does_not_claim_verified(tmp_path, monkeypatch):
-    monkeypatch.setattr(downloads.urllib.request, "urlopen", lambda *a, **k: Response(b"data"))
+    monkeypatch.setattr(
+        downloads.urllib.request, "build_opener",
+        lambda handler: fake_release_opener(handler, b"data"),
+    )
     asset = Asset("file.zip", "https://github.com/ic005k/OCAuxiliaryTools/releases/download/tag/file.zip", 4, None)
     assert download_asset(asset, tmp_path / "file.zip")[2] is False
     with pytest.raises(AppError, match="untrusted_download"):
