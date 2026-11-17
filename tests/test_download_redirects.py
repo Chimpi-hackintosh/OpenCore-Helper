@@ -4,7 +4,6 @@ import io
 
 import pytest
 
-from openhelper import errors
 from openhelper.core import downloads
 from openhelper.core.downloads import Asset, download_asset
 from openhelper.errors import AppError
