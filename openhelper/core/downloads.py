@@ -26,6 +26,7 @@ REPOSITORIES = {
 _ALLOWED_RELEASE_REDIRECT_HOSTS = frozenset({
     "github.com",
     "release-assets.githubusercontent.com",
+    "objects.githubusercontent.com",
 })
 
 
